@@ -181,8 +181,10 @@ const MainApp: React.FC = () => {
         </main>
       </div>
 
-      {/* Mobile Sticky Bottom Navigation */}
-      <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} viewMode={viewMode} />
+      {/* Mobile Sticky Bottom Navigation - Hidden on prescriptions page */}
+      {activeTab !== 'prescriptions' && (
+        <MobileNav activeTab={activeTab} setActiveTab={setActiveTab} viewMode={viewMode} />
+      )}
 
       {/* Global Quick Patient Search Modal */}
       <QuickPatientSearchModal

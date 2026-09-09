@@ -93,7 +93,7 @@ export const PrintPrescriptionView: React.FC<PrintPrescriptionViewProps> = ({
       </div>
 
       {/* Printable Sheet Container */}
-      <div className="print-page bg-white max-w-3xl mx-auto p-8 sm:p-12 rounded-2xl border border-slate-200 shadow-xl space-y-6 text-slate-900 font-sans">
+      <div className="print-page bg-white max-w-3xl mx-auto p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-xl space-y-3 text-slate-900 font-sans">
         {/* Prescription Template or Default Header */}
         {doctor.prescription_template ? (
           <div className="w-full border-b-2 border-slate-200 pb-6" style={{ pageBreakInside: 'avoid' }}>
@@ -109,9 +109,9 @@ export const PrintPrescriptionView: React.FC<PrintPrescriptionViewProps> = ({
             />
           </div>
         ) : (
-          <div className="flex items-start justify-between border-b-2 border-slate-900 pb-6">
+          <div className="flex items-start justify-between border-b-2 border-slate-900 pb-3">
             <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              <h1 className="text-lg font-black text-slate-900 tracking-tight">
                 {doctor.clinic_name || 'MediEMR Medical Care'}
               </h1>
               <p className="text-xs text-slate-600 font-medium mt-1">
@@ -121,7 +121,7 @@ export const PrintPrescriptionView: React.FC<PrintPrescriptionViewProps> = ({
             </div>
 
             <div className="text-right">
-              <h2 className="text-base font-bold text-teal-700">{doctor.name || 'Dr. Medical Officer'}</h2>
+              <h2 className="text-sm font-bold text-teal-700">{doctor.name || 'Dr. Medical Officer'}</h2>
               <p className="text-xs text-slate-600 font-semibold">{doctor.qualification || 'MBBS'}</p>
               <p className="text-xs text-slate-500">{doctor.specialization || 'General Physician'}</p>
               <p className="text-[11px] text-slate-400 font-mono mt-1">
@@ -132,7 +132,7 @@ export const PrintPrescriptionView: React.FC<PrintPrescriptionViewProps> = ({
         )}
 
         {/* Patient Info Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200 text-xs">
           <div>
             <span className="text-slate-400 font-bold uppercase block text-[10px]">Patient Name</span>
             <span className="font-bold text-slate-900">{patient?.first_name} {patient?.last_name}</span>
@@ -155,7 +155,7 @@ export const PrintPrescriptionView: React.FC<PrintPrescriptionViewProps> = ({
 
         {/* Vitals Summary Row if available */}
         {consultation.vitals && (
-          <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-700 border-b border-slate-200 pb-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700 border-b border-slate-200 pb-2">
             {consultation.vitals.systolic_bp && (
               <span>BP: <b>{consultation.vitals.systolic_bp}/{consultation.vitals.diastolic_bp} mmHg</b></span>
             )}
@@ -167,7 +167,7 @@ export const PrintPrescriptionView: React.FC<PrintPrescriptionViewProps> = ({
         )}
 
         {/* Chief Complaint & Diagnosis */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
           {consultation.chief_complaint && (
             <div>
               <span className="font-bold uppercase text-slate-500 text-[10px]">Chief Complaint</span>
@@ -184,15 +184,15 @@ export const PrintPrescriptionView: React.FC<PrintPrescriptionViewProps> = ({
 
         {/* Investigations Advised */}
         {consultation.investigations && consultation.investigations.length > 0 && (
-          <div className="p-3 bg-orange-50 rounded-xl border border-orange-200">
+          <div className="p-2 bg-orange-50 rounded-xl border border-orange-200">
             <span className="font-bold uppercase text-orange-700 text-[10px] block mb-2">Investigations Advised</span>
             <p className="text-xs text-orange-900 font-semibold">{consultation.investigations.join(', ')}</p>
           </div>
         )}
 
         {/* Rx Symbol Header */}
-        <div className="pt-2 flex items-center gap-2">
-          <span className="text-3xl font-serif font-black text-teal-800">Rx</span>
+        <div className="pt-1 flex items-center gap-2">
+          <span className="text-2xl font-serif font-black text-teal-800">Rx</span>
           <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
             Prescribed Medicines
           </span>
@@ -203,23 +203,23 @@ export const PrintPrescriptionView: React.FC<PrintPrescriptionViewProps> = ({
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
               <tr>
-                <th className="p-3">#</th>
-                <th className="p-3">Medicine Name</th>
-                <th className="p-3">Dosage</th>
-                <th className="p-3">Frequency</th>
-                <th className="p-3">Duration</th>
-                <th className="p-3">Instructions</th>
+                <th className="p-1.5 text-[10px]">#</th>
+                <th className="p-1.5 text-[10px]">Medicine Name</th>
+                <th className="p-1.5 text-[10px]">Dosage</th>
+                <th className="p-1.5 text-[10px]">Frequency</th>
+                <th className="p-1.5 text-[10px]">Duration</th>
+                <th className="p-1.5 text-[10px]">Instructions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {consultation.prescriptions?.map((rx, i) => (
                 <tr key={i} className="hover:bg-slate-50">
-                  <td className="p-3 font-bold text-slate-400">{i + 1}</td>
-                  <td className="p-3 font-bold text-slate-900">{rx.medicine_name}</td>
-                  <td className="p-3 text-slate-700">{rx.dosage}</td>
-                  <td className="p-3 font-bold text-teal-800">{rx.frequency}</td>
-                  <td className="p-3 text-slate-700">{rx.duration}</td>
-                  <td className="p-3 text-slate-600 italic">{rx.instructions || '-'}</td>
+                  <td className="p-1.5 font-bold text-slate-400 text-[10px]">{i + 1}</td>
+                  <td className="p-1.5 font-bold text-slate-900 text-[10px]">{rx.medicine_name}</td>
+                  <td className="p-1.5 text-slate-700 text-[10px]">{rx.dosage}</td>
+                  <td className="p-1.5 font-bold text-teal-800 text-[10px]">{rx.frequency}</td>
+                  <td className="p-1.5 text-slate-700 text-[10px]">{rx.duration}</td>
+                  <td className="p-1.5 text-slate-600 italic text-[10px]">{rx.instructions || '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -227,7 +227,7 @@ export const PrintPrescriptionView: React.FC<PrintPrescriptionViewProps> = ({
         </div>
 
         {/* Treatment Plan & Follow-up */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
           {consultation.treatment_plan && (
             <div>
               <span className="font-bold uppercase text-slate-500 text-[10px]">Advice & Treatment Plan</span>
@@ -245,7 +245,7 @@ export const PrintPrescriptionView: React.FC<PrintPrescriptionViewProps> = ({
         </div>
 
         {/* Doctor Signature Block */}
-        <div className="pt-16 flex justify-end">
+        <div className="pt-6 flex justify-end">
           <div className="text-center w-48 border-t border-slate-800 pt-2">
             <p className="font-bold text-xs text-slate-900">{doctor.name}</p>
             <p className="text-[10px] text-slate-500">Authorized Doctor Signature</p>

@@ -270,6 +270,16 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
             disabled={saving}
             className="flex items-center gap-2 px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
           >
+              <button
+  type="button"
+  onClick={() => {
+    console.log("Send prescription via WhatsApp");
+  }}
+  className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors"
+>
+  📱 Send via WhatsApp
+</button>
+            
             <Printer className="w-4 h-4" />
             <span>{isReceptionist ? 'Save Vitals' : 'Complete & Print Rx'}</span>
           </button>
