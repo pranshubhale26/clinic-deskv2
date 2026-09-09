@@ -801,25 +801,23 @@ export const PrescriptionsPage: React.FC = () => {
                 </p>
 
                 <p className="text-sm font-semibold text-slate-800 mt-1">
+  {whatsappConsultation.patient?.first_name}
+  _
+  {whatsappConsultation.patient?.patient_name}
 
-                  {whatsappConsultation.patient?.first_name}
-                  _
-                  {whatsappConsultation.patient?.patient_name}
+  {whatsappConsultation.patient?.last_name
+    ? whatsappConsultation.patient.last_name
+    : ''}
 
-                  {whatsappConsultation.patient?.last_name
-                    ? whatsappConsultation.patient.last_name
-                    : ''}
+  _
+  {new Date(
+    whatsappConsultation.created_at
+  )
+    .toISOString()
+    .split('T')[0]}
 
-                  _
-                  {new Date(
-                    whatsappConsultation.created_at
-                  )
-                    .toISOString()
-                    .split('T')[0]}
-
-                  .pdf
-
-                </p>
+  .pdf
+</p>
 
                 <p className="text-xs text-slate-500 mt-1">
                   {whatsappConsultation.prescriptions?.length || 0}{' '}
