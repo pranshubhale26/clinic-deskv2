@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   LayoutDashboard, Users, Calendar, Stethoscope, 
   FileText, BarChart3, Settings, 
-  LogOut, Activity, UserCircle
+  LogOut, Activity, UserCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -30,13 +30,30 @@ export const navItems: NavItem[] = [
   { id: 'settings', label: 'Clinic Settings', icon: Settings }
 ];
 
+// Tabs available to receptionists
+const RECEPTIONIST_TABS = new Set(['dashboard', 'patients', 'appointments', 'consultations']);
+
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, viewMode = 'auto' }) => {
-  const { doctor, logout } = useAuth();
+  const { doctor, receptionist, role, logout } = useAuth();
+
+  const visibleItems = role === 'receptionist'
+    ? navItems.filter((item) => RECEPTIONIST_TABS.has(item.id))
+    : navItems;
 
   const visibilityClass = 
     viewMode === 'desktop' ? 'flex' : 
     viewMode === 'mobile' ? 'hidden' : 
     'hidden md:flex';
+
+  const displayName = role === 'receptionist'
+    ? (receptionist?.name || 'Receptionist')
+    : (doctor?.name || 'Dr. Account');
+
+  const displayInitial = displayName.replace('Dr. ', '').charAt(0);
+
+  const displaySub = role === 'receptionist'
+    ? 'Front Desk Staff'
+    : (doctor?.specialization || 'Physician');
 
   return (
     <aside className={`${visibilityClass} flex-col w-64 bg-slate-900 text-slate-300 min-h-screen border-r border-slate-800 shrink-0 sticky top-0 h-screen select-none`}>
@@ -58,7 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, viewM
         <div className="px-3 pb-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
           Main Menu
         </div>
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
@@ -72,21 +89,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, viewM
               }`}
             >
               <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-              <span>{item.label}</span>
+              <span>{role === 'receptionist' && item.id === 'consultations' ? 'Vitals Entry' : item.label}</span>
             </button>
           );
         })}
       </nav>
 
-      {/* Doctor Card & Logout Footer */}
+      {/* Profile Card & Logout Footer */}
       <div className="p-3 border-t border-slate-800 bg-slate-900/50">
         <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 mb-2 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 flex items-center justify-center text-sm font-bold shrink-0">
-            {doctor?.name ? doctor.name.replace('Dr. ', '').charAt(0) : 'D'}
+          <div className={`w-9 h-9 rounded-full border flex items-center justify-center text-sm font-bold shrink-0 ${
+            role === 'receptionist'
+              ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
+              : 'bg-teal-500/20 text-teal-300 border-teal-500/30'
+          }`}>
+            {role === 'receptionist' ? <UserCheck className="w-4 h-4" /> : displayInitial}
           </div>
           <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-semibold text-white truncate">{doctor?.name || 'Dr. Account'}</h4>
-            <p className="text-[10px] text-slate-400 truncate">{doctor?.specialization || 'Physician'}</p>
+            <h4 className="text-xs font-semibold text-white truncate">{displayName}</h4>
+            <p className="text-[10px] text-slate-400 truncate">{displaySub}</p>
           </div>
         </div>
 

@@ -27,11 +27,20 @@ import { QuickPatientSearchModal } from './components/patients/QuickPatientSearc
 import { Patient, Consultation } from './types/database';
 
 const MainApp: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, role } = useAuth();
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   // Navigation state
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+
+  // Receptionists can enter vitals, but not treatment or other clinical modules.
+  const RESTRICTED_TABS = new Set(['prescriptions', 'reports', 'settings']);
+  const handleSetActiveTab = (tab: string) => {
+    if (role === 'receptionist' && RESTRICTED_TABS.has(tab)) {
+      return; // silently block
+    }
+    setActiveTab(tab);
+  };
 
   // View Mode state (Auto / Desktop / Mobile) with localStorage persistence
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -108,19 +117,21 @@ const MainApp: React.FC = () => {
     <div className={rootContainerClass}>
       {/* Sidebar remains available in the app but is excluded from printed documents. */}
       <div className="no-print">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} viewMode={viewMode} />
+        <Sidebar activeTab={activeTab} setActiveTab={handleSetActiveTab} viewMode={viewMode} />
       </div>
 
       {/* Main Workspace Column */}
       <div className={workspaceColumnClass}>
         {/* Top Header */}
-        <Header
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          onOpenQuickPatientSearch={() => setShowQuickSearchModal(true)}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-        />
+        <div className="no-print">
+          <Header
+            activeTab={activeTab}
+            setActiveTab={handleSetActiveTab}
+            onOpenQuickPatientSearch={() => setShowQuickSearchModal(true)}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+          />
+        </div>
 
         {/* Page Content Container */}
         <main className="flex-1 p-4 lg:p-8 max-w-7xl w-full mx-auto">

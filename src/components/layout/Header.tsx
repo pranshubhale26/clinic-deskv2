@@ -20,8 +20,16 @@ export const Header: React.FC<HeaderProps> = ({
   viewMode = 'auto',
   setViewMode
 }) => {
-  const { doctor } = useAuth();
+  const { doctor, receptionist, role } = useAuth();
   const currentNav = navItems.find((n) => n.id === activeTab);
+
+  const displayName = role === 'receptionist'
+    ? (receptionist?.name || 'Receptionist')
+    : (doctor?.name || 'Dr. Account');
+
+  const displayInitial = displayName.replace('Dr. ', '').charAt(0);
+  const clinicName = doctor?.clinic_name || 'MediEMR Clinic Workspace';
+
 
   return (
     <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 lg:px-8 py-3.5 flex items-center justify-between gap-4">
@@ -37,7 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
             {currentNav?.label || 'Dashboard'}
           </h2>
           <p className="text-xs text-slate-500 hidden sm:block">
-            {doctor?.clinic_name || 'MediEMR Clinic Workspace'}
+            {clinicName}
           </p>
         </div>
       </div>
@@ -120,19 +128,19 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Clinic Name Tag */}
         <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 text-teal-700 border border-teal-200/60 rounded-lg text-xs font-semibold">
           <Building2 className="w-3.5 h-3.5 text-teal-600" />
-          <span className="truncate max-w-[160px]">{doctor?.clinic_name || 'Clinic Care'}</span>
+          <span className="truncate max-w-[160px]">{clinicName}</span>
         </div>
 
-        {/* Doctor Header Profile */}
+        {/* Doctor / Receptionist Header Profile */}
         <button
           onClick={() => setActiveTab('settings')}
           className="flex items-center gap-2 pl-2 pr-3 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-full transition text-left cursor-pointer"
         >
           <div className="w-7 h-7 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-xs">
-            {doctor?.name ? doctor.name.replace('Dr. ', '').charAt(0) : 'D'}
+            {displayInitial}
           </div>
           <span className="text-xs font-semibold text-slate-700 hidden md:block">
-            {doctor?.name || 'Dr. Account'}
+            {displayName}
           </span>
           <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden md:block" />
         </button>

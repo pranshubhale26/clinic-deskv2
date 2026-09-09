@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { 
   User, Phone, Mail, MapPin, Calendar, HeartPulse, 
   AlertTriangle, Stethoscope, FileText, Upload, Plus, 
-  ArrowLeft, Edit, Trash2, Printer, CheckCircle, Clock
+  ArrowLeft, Edit, Trash2, Printer, CheckCircle, Clock, Lock
 } from 'lucide-react';
 import { Patient, Consultation, Appointment, MedicalHistory, LabReport, DocumentRecord } from '../../types/database';
 import { dataService } from '../../services/dataService';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
+
 
 interface PatientProfileViewProps {
   patientId: string;
@@ -26,14 +28,16 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
   onPrintPrescription
 }) => {
   const { showToast } = useToast();
+  const { role } = useAuth();
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [medicalHistories, setMedicalHistories] = useState<MedicalHistory[]>([]);
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'history' | 'consultations' | 'prescriptions' | 'labs' | 'documents' | 'appointments'
+    'overview' | 'history' | 'vitals' | 'consultations' | 'prescriptions' | 'labs' | 'documents' | 'appointments'
   >('overview');
+
 
   const [loading, setLoading] = useState(true);
 
@@ -139,14 +143,17 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
             <Calendar className="w-4 h-4" />
             <span>Schedule Apt</span>
           </button>
-          <button
-            onClick={() => onStartConsultation(patient.id)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs rounded-xl shadow-md transition cursor-pointer"
-          >
-            <Stethoscope className="w-4 h-4" />
-            <span>New Consultation</span>
-          </button>
+          {role !== 'receptionist' && (
+            <button
+              onClick={() => onStartConsultation(patient.id)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs rounded-xl shadow-md transition cursor-pointer"
+            >
+              <Stethoscope className="w-4 h-4" />
+              <span>New Consultation</span>
+            </button>
+          )}
         </div>
+
       </div>
 
       {/* Patient Profile Header Card */}
@@ -205,8 +212,11 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
         {[
           { id: 'overview', label: 'Overview' },
           { id: 'history', label: `Medical History (${medicalHistories.length})` },
-          { id: 'consultations', label: `Consultations (${consultations.length})` },
-          { id: 'prescriptions', label: 'Prescriptions' },
+          ...(role === 'receptionist' ? [{ id: 'vitals', label: 'Vitals' }] : []),
+          ...(role !== 'receptionist' ? [
+            { id: 'consultations', label: `Consultations (${consultations.length})` },
+            { id: 'prescriptions', label: 'Prescriptions' },
+          ] : []),
           { id: 'labs', label: 'Lab Reports' },
           { id: 'documents', label: 'Documents' },
           { id: 'appointments', label: `Appointments (${appointments.length})` }
@@ -223,7 +233,16 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
             {tab.label}
           </button>
         ))}
+
+        {/* Restricted indicator for receptionists */}
+        {role === 'receptionist' && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 ml-1 bg-slate-100 border border-slate-200 rounded-lg text-[11px] text-slate-400 font-medium shrink-0">
+            <Lock className="w-3 h-3" />
+            <span>Clinical data restricted</span>
+          </div>
+        )}
       </div>
+
 
       {/* Tab Content Panels */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
@@ -292,6 +311,28 @@ export const PatientProfileView: React.FC<PatientProfileViewProps> = ({
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'vitals' && role === 'receptionist' && (
+          <div className="space-y-4">
+            <h3 className="font-bold text-sm text-slate-900">Recorded Vital Signs</h3>
+            {consultations.filter((c) => c.vitals).length === 0 ? (
+              <div className="py-12 text-center text-xs text-slate-400">No vitals recorded for this patient.</div>
+            ) : (
+              consultations.filter((c) => c.vitals).map((c) => (
+                <div key={c.id} className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50 text-xs">
+                  <div><span className="block text-slate-400">Blood Pressure</span><strong>{c.vitals?.systolic_bp || '-'} / {c.vitals?.diastolic_bp || '-'} mmHg</strong></div>
+                  <div><span className="block text-slate-400">Pulse</span><strong>{c.vitals?.pulse || '-'} bpm</strong></div>
+                  <div><span className="block text-slate-400">Temperature</span><strong>{c.vitals?.temperature || '-'} °F</strong></div>
+                  <div><span className="block text-slate-400">SpO2</span><strong>{c.vitals?.oxygen_saturation || '-'}%</strong></div>
+                  <div><span className="block text-slate-400">Height / Weight</span><strong>{c.vitals?.height || '-'} cm / {c.vitals?.weight || '-'} kg</strong></div>
+                  <div><span className="block text-slate-400">Respiratory Rate</span><strong>{c.vitals?.respiratory_rate || '-'} bpm</strong></div>
+                  <div><span className="block text-slate-400">BMI</span><strong>{c.vitals?.bmi || '-'}</strong></div>
+                  <div><span className="block text-slate-400">Recorded</span><strong>{new Date(c.created_at).toLocaleDateString()}</strong></div>
+                </div>
+              ))
+            )}
           </div>
         )}
 

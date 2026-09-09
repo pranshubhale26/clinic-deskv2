@@ -1,5 +1,18 @@
 export type Gender = 'Male' | 'Female' | 'Other';
 
+export type UserRole = 'doctor' | 'receptionist';
+
+export interface Receptionist {
+  id: string;
+  doctor_id: string;
+  auth_user_id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  password?: string; // stored only in localStorage demo mode
+  created_at: string;
+}
+
 export type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'No Show';
 
 export interface Doctor {
@@ -15,6 +28,7 @@ export interface Doctor {
   clinic_address?: string;
   profile_image?: string;
   consultation_fee?: number;
+  prescription_template?: string; // base64 encoded image
   created_at: string;
 }
 
@@ -90,6 +104,7 @@ export interface Consultation {
   chief_complaint?: string;
   symptoms?: string[];
   diagnosis?: string[];
+  investigations?: string[];
   clinical_notes?: string;
   examination_notes?: string;
   treatment_plan?: string;

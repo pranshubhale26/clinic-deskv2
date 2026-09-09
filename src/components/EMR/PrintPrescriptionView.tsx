@@ -14,7 +14,51 @@ export const PrintPrescriptionView: React.FC<PrintPrescriptionViewProps> = ({
   onBack
 }) => {
   const handlePrint = () => {
-    window.print();
+    const patient = consultation.patient;
+    if (patient) {
+      const patientName = `${patient.first_name}_${patient.last_name}`.replace(/\s+/g, '_');
+      const date = new Date(consultation.created_at).toISOString().split('T')[0];
+      const filename = `${patientName}_${date}`;
+      
+      // Set document title for PDF filename
+      const originalTitle = document.title;
+      document.title = filename;
+      
+      // Wait for all images to load before printing
+      const images = document.querySelectorAll('.print-page img');
+      let loadedCount = 0;
+      let totalImages = images.length;
+      
+      if (totalImages === 0) {
+        // No images, print immediately
+        setTimeout(() => {
+          window.print();
+          document.title = originalTitle;
+        }, 100);
+      } else {
+        // Wait for all images to load
+        const checkAndPrint = () => {
+          loadedCount++;
+          if (loadedCount === totalImages) {
+            setTimeout(() => {
+              window.print();
+              document.title = originalTitle;
+            }, 100);
+          }
+        };
+        
+        images.forEach((img: any) => {
+          if (img.complete) {
+            checkAndPrint();
+          } else {
+            img.onload = checkAndPrint;
+            img.onerror = checkAndPrint;
+          }
+        });
+      }
+    } else {
+      window.print();
+    }
   };
 
   const patient = consultation.patient;
@@ -50,27 +94,42 @@ export const PrintPrescriptionView: React.FC<PrintPrescriptionViewProps> = ({
 
       {/* Printable Sheet Container */}
       <div className="print-page bg-white max-w-3xl mx-auto p-8 sm:p-12 rounded-2xl border border-slate-200 shadow-xl space-y-6 text-slate-900 font-sans">
-        {/* Clinic & Doctor Header */}
-        <div className="flex items-start justify-between border-b-2 border-slate-900 pb-6">
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-              {doctor.clinic_name || 'MediEMR Medical Care'}
-            </h1>
-            <p className="text-xs text-slate-600 font-medium mt-1">
-              {doctor.clinic_address || 'Clinic Address'}
-            </p>
-            <p className="text-xs text-slate-600">Contact: {doctor.phone || 'N/A'}</p>
+        {/* Prescription Template or Default Header */}
+        {doctor.prescription_template ? (
+          <div className="w-full border-b-2 border-slate-200 pb-6" style={{ pageBreakInside: 'avoid' }}>
+            <img 
+              src={doctor.prescription_template} 
+              alt="Prescription Template" 
+              className="w-full"
+              style={{ 
+                maxHeight: '300px',
+                objectFit: 'contain',
+                display: 'block'
+              }}
+            />
           </div>
+        ) : (
+          <div className="flex items-start justify-between border-b-2 border-slate-900 pb-6">
+            <div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+                {doctor.clinic_name || 'MediEMR Medical Care'}
+              </h1>
+              <p className="text-xs text-slate-600 font-medium mt-1">
+                {doctor.clinic_address || 'Clinic Address'}
+              </p>
+              <p className="text-xs text-slate-600">Contact: {doctor.phone || 'N/A'}</p>
+            </div>
 
-          <div className="text-right">
-            <h2 className="text-base font-bold text-teal-700">{doctor.name || 'Dr. Medical Officer'}</h2>
-            <p className="text-xs text-slate-600 font-semibold">{doctor.qualification || 'MBBS'}</p>
-            <p className="text-xs text-slate-500">{doctor.specialization || 'General Physician'}</p>
-            <p className="text-[11px] text-slate-400 font-mono mt-1">
-              Reg No: {doctor.registration_number || 'REG-100293'}
-            </p>
+            <div className="text-right">
+              <h2 className="text-base font-bold text-teal-700">{doctor.name || 'Dr. Medical Officer'}</h2>
+              <p className="text-xs text-slate-600 font-semibold">{doctor.qualification || 'MBBS'}</p>
+              <p className="text-xs text-slate-500">{doctor.specialization || 'General Physician'}</p>
+              <p className="text-[11px] text-slate-400 font-mono mt-1">
+                Reg No: {doctor.registration_number || 'REG-100293'}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Patient Info Row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
@@ -122,6 +181,14 @@ export const PrintPrescriptionView: React.FC<PrintPrescriptionViewProps> = ({
             </div>
           )}
         </div>
+
+        {/* Investigations Advised */}
+        {consultation.investigations && consultation.investigations.length > 0 && (
+          <div className="p-3 bg-orange-50 rounded-xl border border-orange-200">
+            <span className="font-bold uppercase text-orange-700 text-[10px] block mb-2">Investigations Advised</span>
+            <p className="text-xs text-orange-900 font-semibold">{consultation.investigations.join(', ')}</p>
+          </div>
+        )}
 
         {/* Rx Symbol Header */}
         <div className="pt-2 flex items-center gap-2">

@@ -15,8 +15,11 @@ interface MobileNavProps {
   viewMode?: ViewMode;
 }
 
+// Tabs available to receptionists
+const RECEPTIONIST_TABS = new Set(['dashboard', 'patients', 'appointments', 'consultations']);
+
 export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, setActiveTab, viewMode = 'auto' }) => {
-  const { doctor, logout } = useAuth();
+  const { doctor, receptionist, role, logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const visibilityClass = 
@@ -24,12 +27,28 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, setActiveTab, v
     viewMode === 'mobile' ? 'block' : 
     'md:hidden';
 
-  const mainTabs = [
+  const allMainTabs = [
     { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
     { id: 'patients', label: 'Patients', icon: Users },
     { id: 'appointments', label: 'Calendar', icon: Calendar },
     { id: 'consultations', label: 'EMR', icon: Stethoscope }
   ];
+
+  const mainTabs = role === 'receptionist'
+    ? allMainTabs.filter((t) => RECEPTIONIST_TABS.has(t.id))
+    : allMainTabs;
+
+  const drawerItems = role === 'receptionist'
+    ? navItems.filter((item) => RECEPTIONIST_TABS.has(item.id))
+    : navItems;
+
+  const displayName = role === 'receptionist'
+    ? (receptionist?.name || 'Receptionist')
+    : (doctor?.name || 'Dr. Account');
+
+  const displaySub = role === 'receptionist'
+    ? 'Front Desk Staff'
+    : (doctor?.clinic_name || '');
 
   const handleSelectTab = (tabId: string) => {
     setActiveTab(tabId);
@@ -96,7 +115,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, setActiveTab, v
             </div>
 
             <nav className="flex-1 py-4 space-y-1.5 overflow-y-auto">
-              {navItems.map((item) => {
+              {drawerItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
                 return (
@@ -110,7 +129,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, setActiveTab, v
                     }`}
                   >
                     <Icon className="w-5 h-5" />
-                    <span>{item.label}</span>
+                    <span>{role === 'receptionist' && item.id === 'consultations' ? 'Vitals Entry' : item.label}</span>
                   </button>
                 );
               })}
@@ -118,8 +137,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({ activeTab, setActiveTab, v
 
             <div className="pt-4 border-t border-slate-800">
               <div className="mb-3 p-3 rounded-xl bg-slate-800/80 text-xs">
-                <p className="font-semibold text-white">{doctor?.name}</p>
-                <p className="text-[10px] text-slate-400">{doctor?.clinic_name}</p>
+                <p className="font-semibold text-white">{displayName}</p>
+                <p className="text-[10px] text-slate-400">{displaySub}</p>
               </div>
               <button
                 onClick={logout}

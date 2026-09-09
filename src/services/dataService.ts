@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { 
   Doctor, Patient, Appointment, Consultation, 
   Vitals, PrescriptionItem, MedicalHistory, 
-  LabReport, DocumentRecord
+  LabReport, DocumentRecord, Receptionist
 } from '../types/database';
 
 // Mock Initial Doctor Profile
@@ -18,6 +18,17 @@ const INITIAL_DOCTOR: Doctor = {
   clinic_name: 'MediEMR Specialty Care & Diagnostic Center',
   clinic_address: '402, Apex Healthcare Tower, MG Road, Bengaluru, 560001',
   consultation_fee: 600,
+  created_at: new Date().toISOString()
+};
+
+const INITIAL_RECEPTIONIST: Receptionist = {
+  id: 'rec-101',
+  doctor_id: 'doc-101',
+  auth_user_id: 'recuser-101',
+  name: 'MediEMR Receptionist',
+  email: 'receptionist@mediemr.com',
+  phone: '+91 98765 43211',
+  password: 'reception123',
   created_at: new Date().toISOString()
 };
 
@@ -161,6 +172,7 @@ const INITIAL_CONSULTATIONS: Consultation[] = [
     chief_complaint: 'Mild dizziness in the morning and mild headache for 3 days',
     symptoms: ['Dizziness', 'Headache', 'Fatigue'],
     diagnosis: ['Essential Hypertension (Stage 1)'],
+    investigations: ['Blood Sugar', 'Lipid Profile', 'Kidney Function'],
     clinical_notes: 'Patient reports good compliance with reduced sodium diet. Resting blood pressure remains slightly elevated.',
     examination_notes: 'CVS: S1, S2 heard normal. RS: Clear bilateral air entry. CNS: Intact.',
     treatment_plan: 'Continue anti-hypertensive medication. Salt restriction (<2g/day). 30 mins daily walking.',
@@ -208,9 +220,11 @@ const INITIAL_CONSULTATIONS: Consultation[] = [
 // LocalStorage Persistence Keys
 const STORAGE_KEYS = {
   DOCTOR: 'mediemr_doctor',
+  DOCTOR_TEMPLATE: 'mediemr_doctor_template',
   PATIENTS: 'mediemr_patients',
   APPOINTMENTS: 'mediemr_appointments',
   CONSULTATIONS: 'mediemr_consultations',
+  RECEPTIONISTS: 'mediemr_receptionists',
 };
 
 // Helper for local state fallback
@@ -241,24 +255,77 @@ export const dataService = {
         .eq('auth_user_id', userId)
         .maybeSingle();
 
-      if (!error && data) return data as Doctor;
+      if (!error && data) {
+        const doctor = data as Doctor;
+        // Also check localStorage for prescription template as fallback
+        const storedTemplate = getLocal<string | null>(STORAGE_KEYS.DOCTOR_TEMPLATE, null);
+        if (storedTemplate && !doctor.prescription_template) {
+          doctor.prescription_template = storedTemplate;
+        }
+        return doctor;
+      }
     }
-    return getLocal(STORAGE_KEYS.DOCTOR, INITIAL_DOCTOR);
+    // Load from localStorage
+    const doctor = getLocal(STORAGE_KEYS.DOCTOR, INITIAL_DOCTOR);
+    // Load prescription template from separate storage
+    const template = getLocal<string | null>(STORAGE_KEYS.DOCTOR_TEMPLATE, null);
+    if (template) {
+      doctor.prescription_template = template;
+    }
+    return doctor;
   },
 
   updateDoctorProfile: async (doctor: Partial<Doctor>): Promise<Doctor> => {
+    // Extract prescription_template to save separately
+    const { prescription_template, ...doctorWithoutTemplate } = doctor;
+    
     if (isSupabaseConfigured && doctor.id) {
+      // Try to update Supabase with doctor data (without template or with template)
       const { data, error } = await supabase
         .from('doctors')
-        .update(doctor)
+        .update(doctorWithoutTemplate)
         .eq('id', doctor.id)
         .select()
         .single();
-      if (!error && data) return data as Doctor;
+      
+      if (!error && data) {
+        const updatedDoctor = data as Doctor;
+        // Save template separately
+        if (prescription_template) {
+          try {
+            setLocal(STORAGE_KEYS.DOCTOR_TEMPLATE, prescription_template);
+            updatedDoctor.prescription_template = prescription_template;
+          } catch (err) {
+            console.error('Failed to save prescription template', err);
+          }
+        }
+        return updatedDoctor;
+      }
     }
+    
+    // Fallback to localStorage
     const current = getLocal(STORAGE_KEYS.DOCTOR, INITIAL_DOCTOR);
-    const updated = { ...current, ...doctor };
+    const updated = { ...current, ...doctorWithoutTemplate };
+    
+    // Save doctor profile
     setLocal(STORAGE_KEYS.DOCTOR, updated);
+    
+    // Save template separately if provided
+    if (prescription_template) {
+      try {
+        setLocal(STORAGE_KEYS.DOCTOR_TEMPLATE, prescription_template);
+        updated.prescription_template = prescription_template;
+      } catch (err) {
+        console.error('Failed to save prescription template', err);
+      }
+    } else {
+      // Load existing template if not provided
+      const existingTemplate = getLocal<string | null>(STORAGE_KEYS.DOCTOR_TEMPLATE, null);
+      if (existingTemplate) {
+        updated.prescription_template = existingTemplate;
+      }
+    }
+    
     return updated;
   },
 
@@ -517,7 +584,26 @@ export const dataService = {
     const patientObj = patients.find((p) => p.id === consultationData.patient_id);
 
     if (isSupabaseConfigured) {
-      const doctor = await dataService.getDoctorProfile('current');
+      const { data: { user } } = await supabase.auth.getUser();
+      let doctor = await dataService.getDoctorProfile(user?.id || 'current');
+
+      if (user) {
+        const { data: receptionist } = await supabase
+          .from('receptionists')
+          .select('doctor_id')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+
+        if (receptionist?.doctor_id) {
+          const { data: linkedDoctor } = await supabase
+            .from('doctors')
+            .select('*')
+            .eq('id', receptionist.doctor_id)
+            .single();
+          if (linkedDoctor) doctor = linkedDoctor as Doctor;
+        }
+      }
+
       const consultationPayload = {
         ...consultationData,
         doctor_id: doctor.id,
@@ -591,6 +677,101 @@ export const dataService = {
     }
 
     return newCon;
+  },
+
+  // RECEPTIONIST CRUD
+
+  getReceptionistsByDoctor: async (doctorId: string): Promise<Receptionist[]> => {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase
+        .from('receptionists')
+        .select('*')
+        .eq('doctor_id', doctorId)
+        .order('created_at', { ascending: false });
+      if (!error && data) return data as Receptionist[];
+    }
+    const list = getLocal<Receptionist[]>(STORAGE_KEYS.RECEPTIONISTS, []);
+    return list.filter((r) => r.doctor_id === doctorId);
+  },
+
+  getReceptionistProfile: async (userId: string): Promise<Receptionist | null> => {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase
+        .from('receptionists')
+        .select('*')
+        .eq('auth_user_id', userId)
+        .maybeSingle();
+      if (!error && data) return data as Receptionist;
+      return null;
+    }
+    const list = getLocal<Receptionist[]>(STORAGE_KEYS.RECEPTIONISTS, []);
+    return list.find((r) => r.auth_user_id === userId) || null;
+  },
+
+  // Used for demo mode login — match by email + password
+  getReceptionistByCredentials: async (email: string, password: string): Promise<Receptionist | null> => {
+    const list = getLocal<Receptionist[]>(STORAGE_KEYS.RECEPTIONISTS, [INITIAL_RECEPTIONIST]);
+    return list.find(
+      (r) => r.email.toLowerCase() === email.toLowerCase() && r.password === password
+    ) || null;
+  },
+
+  saveReceptionist: async (data: Partial<Receptionist>): Promise<Receptionist> => {
+    if (isSupabaseConfigured) {
+      // In Supabase mode, creating an auth user for the receptionist requires Admin API / Edge Function.
+      // Store only the receptionist record (auth_user_id must be pre-created via Supabase Dashboard or Edge Function).
+      if (data.id) {
+        const { data: res, error } = await supabase
+          .from('receptionists')
+          .update(data)
+          .eq('id', data.id)
+          .select()
+          .single();
+        if (!error && res) return res as Receptionist;
+      } else {
+        const { data: res, error } = await supabase
+          .from('receptionists')
+          .insert(data)
+          .select()
+          .single();
+        if (!error && res) return res as Receptionist;
+      }
+    }
+
+    // Demo / localStorage mode
+    const list = getLocal<Receptionist[]>(STORAGE_KEYS.RECEPTIONISTS, []);
+    if (data.id) {
+      const idx = list.findIndex((r) => r.id === data.id);
+      if (idx !== -1) {
+        list[idx] = { ...list[idx], ...data };
+        setLocal(STORAGE_KEYS.RECEPTIONISTS, list);
+        return list[idx];
+      }
+    }
+    const doctor = getLocal<Doctor>(STORAGE_KEYS.DOCTOR, INITIAL_DOCTOR);
+    const newRec: Receptionist = {
+      id: `rec-${Date.now()}`,
+      doctor_id: doctor.id,
+      auth_user_id: `recuser-${Date.now()}`,
+      name: data.name || '',
+      email: data.email || '',
+      phone: data.phone || '',
+      password: data.password || '',
+      created_at: new Date().toISOString(),
+    };
+    list.unshift(newRec);
+    setLocal(STORAGE_KEYS.RECEPTIONISTS, list);
+    return newRec;
+  },
+
+  deleteReceptionist: async (id: string): Promise<boolean> => {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('receptionists').delete().eq('id', id);
+      if (!error) return true;
+    }
+    const list = getLocal<Receptionist[]>(STORAGE_KEYS.RECEPTIONISTS, []);
+    setLocal(STORAGE_KEYS.RECEPTIONISTS, list.filter((r) => r.id !== id));
+    return true;
   },
 
 };

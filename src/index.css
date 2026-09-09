@@ -64,6 +64,8 @@
   body {
     background-color: white !important;
     color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   .no-print {
     display: none !important;
@@ -74,9 +76,44 @@
   .print-page {
     box-shadow: none !important;
     border: none !important;
-    padding: 0 !important;
+    padding: 0.5in !important;
     margin: 0 !important;
     width: 100% !important;
+    max-width: 100% !important;
+    background-color: white !important;
+    page-break-after: avoid;
+  }
+  
+  /* Ensure images print properly */
+  .print-page img {
+    max-width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid;
+    display: block !important;
+    margin: 0 auto;
+  }
+  
+  /* Ensure prescription template image is visible */
+  .print-page img[alt="Prescription Template"] {
+    width: 100% !important;
+    max-height: 3in !important;
+    object-fit: contain !important;
+  }
+  
+  /* Remove rounded corners and shadows for print */
+  .print-page div {
+    border-radius: 0 !important;
+  }
+  
+  /* Ensure tables are visible */
+  table {
+    page-break-inside: avoid;
+    width: 100% !important;
+  }
+  
+  /* Prevent page breaks in key sections */
+  .print-page > div {
+    page-break-inside: avoid;
   }
 }
 

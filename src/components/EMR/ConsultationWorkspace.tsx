@@ -21,7 +21,8 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
   initialAppointmentId,
   onConsultationCompleted
 }) => {
-  const { doctor } = useAuth();
+  const { doctor, role } = useAuth();
+  const isReceptionist = role === 'receptionist';
   const { showToast } = useToast();
 
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -33,6 +34,10 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
   const [symptoms, setSymptoms] = useState<string[]>([]);
   const [symptomInput, setSymptomInput] = useState('');
   const [examinationNotes, setExaminationNotes] = useState('');
+  const [examinationFindings, setExaminationFindings] = useState<string[]>([]);
+  const [examinationFindingsInput, setExaminationFindingsInput] = useState('');
+  const [investigations, setInvestigations] = useState<string[]>([]);
+  const [investigationInput, setInvestigationInput] = useState('');
   const [diagnoses, setDiagnoses] = useState<string[]>([]);
   const [diagnosisInput, setDiagnosisInput] = useState('');
   const [treatmentPlan, setTreatmentPlan] = useState('');
@@ -49,9 +54,7 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
   const [respRate, setRespRate] = useState<number | ''>('');
 
   // Medicines List State
-  const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([
-    { medicine_name: 'Paracetamol 650mg', dosage: '1 Tablet', frequency: '1-0-1 (After Food)', duration: '5 Days', route: 'Oral', instructions: 'Take with warm water' }
-  ]);
+  const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
 
   // Saved Consultation for Print
   const [printModeConsultation, setPrintModeConsultation] = useState<Consultation | null>(null);
@@ -59,6 +62,10 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
 
   // Common quick symptom tags
   const commonSymptoms = ['Fever', 'Cough', 'Cold', 'Headache', 'Dizziness', 'Chest Discomfort', 'Nausea', 'Fatigue', 'Abdominal Pain'];
+  // Common quick examination findings tags
+  const commonExaminationFindings = ['CVS', 'RS', 'CNS', 'Per Abdomen', 'Normal', 'Abnormal'];
+  // Common investigations
+  const commonInvestigations = ['CBC', 'Blood Sugar', 'Lipid Profile', 'Liver Function', 'Kidney Function', 'Thyroid Profile', 'Chest X-Ray', 'ECG', 'Ultrasound', 'Urinalysis'];
   // Common quick diagnosis tags
   const commonDiagnoses = ['Acute Upper Respiratory Tract Infection', 'Essential Hypertension', 'Type 2 Diabetes Mellitus', 'Acute Gastritis', 'Seasonal Allergic Rhinitis', 'Migraine'];
 
@@ -128,6 +135,28 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
     setDiagnoses(diagnoses.filter((d) => d !== diag));
   };
 
+  // Examination Findings Tag Handlers
+  const addExaminationFinding = (finding: string) => {
+    if (!finding || examinationFindings.includes(finding)) return;
+    setExaminationFindings([...examinationFindings, finding]);
+    setExaminationFindingsInput('');
+  };
+
+  const removeExaminationFinding = (finding: string) => {
+    setExaminationFindings(examinationFindings.filter((f) => f !== finding));
+  };
+
+  // Investigation Tag Handlers
+  const addInvestigation = (inv: string) => {
+    if (!inv || investigations.includes(inv)) return;
+    setInvestigations([...investigations, inv]);
+    setInvestigationInput('');
+  };
+
+  const removeInvestigation = (inv: string) => {
+    setInvestigations(investigations.filter((i) => i !== inv));
+  };
+
   // Prescription Rows Handlers
   const addPrescriptionRow = () => {
     setPrescriptions([
@@ -170,19 +199,20 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
       const consultationPayload: Partial<Consultation> = {
         patient_id: selectedPatientId,
         appointment_id: initialAppointmentId || undefined,
-        chief_complaint: chiefComplaint,
-        symptoms: symptoms,
-        diagnosis: diagnoses,
-        examination_notes: examinationNotes,
-        treatment_plan: treatmentPlan,
-        follow_up_date: followUpDate || undefined,
+        chief_complaint: isReceptionist ? '' : chiefComplaint,
+        symptoms: isReceptionist ? [] : symptoms,
+        diagnosis: isReceptionist ? [] : diagnoses,
+        investigations: isReceptionist ? [] : investigations,
+        examination_notes: isReceptionist ? '' : (examinationFindings.length > 0 ? `[${examinationFindings.join(', ')}]\n${examinationNotes}` : examinationNotes),
+        treatment_plan: isReceptionist ? '' : treatmentPlan,
+        follow_up_date: isReceptionist ? undefined : followUpDate || undefined,
         status: status
       };
 
       const savedCons = await dataService.saveConsultation(
         consultationPayload,
         vitalsPayload,
-        prescriptions.filter((p) => p.medicine_name.trim() !== '')
+        isReceptionist ? [] : prescriptions.filter((p) => p.medicine_name.trim() !== '')
       );
 
       showToast(`Consultation record saved as ${status}`);
@@ -220,10 +250,10 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <Stethoscope className="w-6 h-6 text-teal-600" />
-            EMR Consultation Workspace
+            {isReceptionist ? 'Patient Vitals Entry' : 'EMR Consultation Workspace'}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Capture clinical notes, examine vitals, diagnose, and construct prescriptions
+            {isReceptionist ? 'Record vital signs for the doctor to review.' : 'Capture clinical notes, examine vitals, diagnose, and construct prescriptions'}
           </p>
         </div>
 
@@ -233,7 +263,7 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
             disabled={saving}
             className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer"
           >
-            Save Draft
+            {isReceptionist ? 'Save Vitals' : 'Save Draft'}
           </button>
           <button
             onClick={() => handleSaveConsultation('Completed', true)}
@@ -241,7 +271,7 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
             className="flex items-center gap-2 px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span>Complete & Print Rx</span>
+            <span>{isReceptionist ? 'Save Vitals' : 'Complete & Print Rx'}</span>
           </button>
         </div>
       </div>
@@ -405,6 +435,7 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
             </div>
           </div>
 
+          {!isReceptionist && <>
           {/* Section 2: Chief Complaint & Symptoms */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
             <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">
@@ -470,26 +501,51 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
               </div>
             </div>
           </div>
+          </>}
         </div>
 
         {/* Center & Right Columns: Clinical Examination, Diagnosis, Prescription Builder, Treatment */}
-        <div className="lg:col-span-2 space-y-6">
+        {!isReceptionist && <div className="lg:col-span-2 space-y-6">
           {/* Section 3: Clinical Examination & Diagnosis */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
             <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">
-              Clinical Findings & Diagnosis
+              Systemic Investigation & Diagnosis
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Clinical Examination Notes</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {examinationFindings.map((finding) => (
+                    <span
+                      key={finding}
+                      className="px-2.5 py-1 bg-purple-100 text-purple-800 font-semibold text-xs rounded-lg flex items-center gap-1"
+                    >
+                      {finding}
+                      <button onClick={() => removeExaminationFinding(finding)} className="hover:text-purple-900">×</button>
+                    </span>
+                  ))}
+                </div>
                 <textarea
                   rows={3}
-                  placeholder="Systemic examination findings (CVS, RS, CNS, Per Abdomen)..."
+                  placeholder="Systemic examination findings..."
                   value={examinationNotes}
                   onChange={(e) => setExaminationNotes(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
+                {/* Quick Examination Findings Pills */}
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {commonExaminationFindings.map((finding) => (
+                    <button
+                      key={finding}
+                      type="button"
+                      onClick={() => addExaminationFinding(finding)}
+                      className="px-2 py-0.5 bg-slate-50 hover:bg-purple-50 border border-slate-200 text-slate-600 text-[10px] rounded-md transition"
+                    >
+                      + {finding}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
@@ -541,7 +597,62 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
             </div>
           </div>
 
-          {/* Section 4: Dynamic Prescription Table Builder */}
+          {/* Section 4: Investigations Advised */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+            <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+              {/* <span className="text-lg"></span> */}
+            Investigations Advised
+            </h3>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Investigations & Lab Tests</label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {investigations.map((inv) => (
+                  <span
+                    key={inv}
+                    className="px-2.5 py-1 bg-orange-100 text-orange-800 font-semibold text-xs rounded-lg flex items-center gap-1"
+                  >
+                    {inv}
+                    <button onClick={() => removeInvestigation(inv)} className="hover:text-orange-900">×</button>
+                  </span>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Add investigation..."
+                  value={investigationInput}
+                  onChange={(e) => setInvestigationInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addInvestigation(investigationInput))}
+                  className="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => addInvestigation(investigationInput)}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 font-semibold text-xs rounded-xl"
+                >
+                  Add
+                </button>
+              </div>
+
+              {/* Quick Investigation Pills */}
+              <div className="flex flex-wrap gap-1 mt-2">
+                {commonInvestigations.map((inv) => (
+                  <button
+                    key={inv}
+                    type="button"
+                    onClick={() => addInvestigation(inv)}
+                    className="px-2 py-0.5 bg-slate-50 hover:bg-orange-50 border border-slate-200 text-slate-600 text-[10px] rounded-md transition"
+                  >
+                    + {inv}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Section 5: Dynamic Prescription Table Builder */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
@@ -658,7 +769,7 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
             </div>
           </div>
 
-          {/* Section 5: Treatment Plan & Follow up */}
+          {/* Section 6: Treatment Plan & Follow up */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
             <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">
               Treatment Advice & Follow-Up Schedule
@@ -687,7 +798,7 @@ export const ConsultationWorkspace: React.FC<ConsultationWorkspaceProps> = ({
               </div>
             </div>
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );

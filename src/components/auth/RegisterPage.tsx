@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Activity, Mail, Lock, User, Building2, Phone, ArrowRight } from 'lucide-react';
+import { Activity, Mail, Lock, Phone, ArrowRight, UserRound, Stethoscope } from 'lucide-react';
+import { UserRole } from '../../types/database';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 
@@ -22,22 +23,23 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
   });
 
   const [loading, setLoading] = useState(false);
+  const [accountType, setAccountType] = useState<UserRole>('doctor');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.password || !formData.clinicName) {
-      showToast('Validation Error', 'Please complete all required doctor details', 'error');
+    if (!formData.name || !formData.email || !formData.password || (accountType === 'doctor' && !formData.clinicName)) {
+      showToast('Validation Error', `Please complete all required ${accountType} details`, 'error');
       return;
     }
 
     setLoading(true);
-    const { error } = await register(formData);
+    const { error } = await register({ ...formData, role: accountType });
     setLoading(false);
 
     if (error) {
       showToast('Registration Error', error, 'error');
     } else {
-      showToast('Doctor Profile Created Successfully! Welcome to MediEMR');
+      showToast(`${accountType === 'doctor' ? 'Doctor' : 'Receptionist'} account created successfully! Welcome to MediEMR`);
     }
   };
 
@@ -54,13 +56,22 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
           <p className="text-xs text-slate-400">Join MediEMR for digital practice & prescription workflows</p>
         </div>
 
+        <div className="grid grid-cols-2 gap-2 p-1 bg-slate-800 rounded-xl">
+          {(['doctor', 'receptionist'] as const).map((type) => (
+            <button key={type} type="button" onClick={() => setAccountType(type)} className={`flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg ${accountType === type ? 'bg-teal-500 text-white' : 'text-slate-400'}`}>
+              {type === 'doctor' ? <Stethoscope className="w-3.5 h-3.5" /> : <UserRound className="w-3.5 h-3.5" />}
+              {type === 'doctor' ? 'Doctor' : 'Receptionist'}
+            </button>
+          ))}
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Doctor Full Name *</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">{accountType === 'doctor' ? 'Doctor' : 'Receptionist'} Full Name *</label>
             <input
               type="text"
               required
-              placeholder="e.g. Dr. Vikram Adani"
+              placeholder="e.g. Vikram Singh"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
@@ -116,7 +127,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+            {accountType === 'doctor' && <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Clinic Name *</label>
               <input
                 type="text"
@@ -126,7 +137,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
                 onChange={(e) => setFormData({ ...formData, clinicName: e.target.value })}
                 className="w-full px-3.5 py-2 bg-slate-800/80 border border-slate-700 rounded-xl text-xs text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
               />
-            </div>
+            </div>}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Contact Phone</label>
               <input
@@ -144,7 +155,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
             disabled={loading}
             className="w-full py-3 bg-teal-500 hover:bg-teal-400 text-white font-bold text-xs rounded-xl shadow-lg shadow-teal-500/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
           >
-            <span>{loading ? 'Creating Account...' : 'Complete Doctor Registration'}</span>
+            <span>{loading ? 'Creating Account...' : `Complete ${accountType === 'doctor' ? 'Doctor' : 'Receptionist'} Registration`}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>

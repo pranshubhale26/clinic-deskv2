@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, User, Building2, Shield, Save, LogOut, CheckCircle2 } from 'lucide-react';
+import { Settings, User, Building2, Shield, Save, LogOut, CheckCircle2, Upload, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 
@@ -18,10 +18,45 @@ export const SettingsPage: React.FC = () => {
     registration_number: doctor?.registration_number || '',
     clinic_name: doctor?.clinic_name || '',
     clinic_address: doctor?.clinic_address || '',
-    consultation_fee: doctor?.consultation_fee || 500
+    consultation_fee: doctor?.consultation_fee || 500,
+    prescription_template: doctor?.prescription_template || ''
   });
 
   const [saving, setSaving] = useState(false);
+  const [templatePreview, setTemplatePreview] = useState<string | null>(doctor?.prescription_template || null);
+
+  const handleTemplateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file is an image
+    if (!file.type.startsWith('image/')) {
+      showToast('Invalid file type', 'Please upload an image file (PNG, JPG, etc.)', 'error');
+      return;
+    }
+
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('File too large', 'Maximum file size is 2MB', 'error');
+      return;
+    }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setFormData({ ...formData, prescription_template: base64 });
+      setTemplatePreview(base64);
+      showToast('Template uploaded', 'Image uploaded successfully. Click Save to apply.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveTemplate = () => {
+    setFormData({ ...formData, prescription_template: '' });
+    setTemplatePreview(null);
+    showToast('Template removed', 'Prescription template has been removed.');
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,6 +221,49 @@ export const SettingsPage: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, consultation_fee: Number(e.target.value) })}
                   className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold text-teal-800 focus:outline-none"
                 />
+              </div>
+
+              {/* Prescription Template Upload Section */}
+              <div className="mt-6 pt-6 border-t border-slate-200">
+                <h4 className="font-bold text-xs text-slate-900 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                  <Upload className="w-4 h-4 text-teal-600" />
+                  Prescription Letterhead Template
+                </h4>
+                <p className="text-[11px] text-slate-600 mb-3">
+                  Upload your clinic's prescription letterhead/header image. This will be used as the template for all prescriptions. Max 2MB, PNG/JPG recommended.
+                </p>
+
+                {templatePreview ? (
+                  <div className="space-y-3">
+                    <div className="border-2 border-teal-200 rounded-xl p-3 bg-teal-50">
+                      <img 
+                        src={templatePreview} 
+                        alt="Prescription Template Preview" 
+                        className="max-h-48 w-auto mx-auto rounded-lg"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveTemplate}
+                      className="w-full px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+                    >
+                      <X className="w-4 h-4" />
+                      <span>Remove Template</span>
+                    </button>
+                  </div>
+                ) : (
+                  <label className="block border-2 border-dashed border-slate-300 rounded-xl p-6 text-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleTemplateUpload}
+                      className="hidden"
+                    />
+                    <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-slate-700">Click to upload prescription template</p>
+                    <p className="text-[11px] text-slate-500 mt-1">or drag and drop</p>
+                  </label>
+                )}
               </div>
             </div>
           )}

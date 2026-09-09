@@ -66,46 +66,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className={`dashboard-page space-y-6 pb-12 animate-in fade-in duration-200 ${viewMode === 'mobile' ? 'dashboard-mobile' : ''}`}>
-      {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 p-6 text-white shadow-xl">
-        <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 opacity-10 pointer-events-none">
-          <Activity className="w-64 h-64 text-teal-400" />
-        </div>
-
-        <div className="dashboard-hero-content relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-semibold mb-2 border border-teal-500/30">
-              <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
-              Live Practice Overview
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Good day, {doctor?.name || 'Doctor'}! 👋
-            </h1>
-            {/* <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-xl">
-              Here is your practice summary for today. You have{' '}
-              <span className="text-teal-400 font-bold">{pendingAppointments.length} pending appointments</span> waiting for consultation.
-            </p> */}
-          </div>
-
-          <div className="dashboard-actions flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              onClick={onOpenNewPatientModal}
-              className="flex items-center gap-2 px-4 py-2.5 bg-teal-500 hover:bg-teal-400 text-white font-semibold text-xs rounded-xl shadow-lg shadow-teal-500/25 transition cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Add Patient</span>
-            </button>
-            <button
-              onClick={onOpenNewAppointmentModal}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-xl border border-white/20 transition cursor-pointer"
-            >
-              <CalendarPlus className="w-4 h-4" />
-              <span>Book Appointment</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Metrics Row */}
       <div className="dashboard-metrics grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1 */}

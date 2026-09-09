@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.doctors (
   clinic_address TEXT,
   profile_image TEXT,
   consultation_fee NUMERIC DEFAULT 500,
+  prescription_template TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -64,6 +65,7 @@ CREATE TABLE IF NOT EXISTS public.consultations (
   chief_complaint TEXT,
   symptoms TEXT[] DEFAULT '{}',
   diagnosis TEXT[] DEFAULT '{}',
+  investigations TEXT[] DEFAULT '{}',
   clinical_notes TEXT,
   examination_notes TEXT,
   treatment_plan TEXT,
@@ -164,7 +166,19 @@ ALTER TABLE public.prescriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.medical_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lab_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
+
+-- Make this script safe to run again after a partial or previous setup.
+DROP POLICY IF EXISTS "Doctors can view own profile" ON public.doctors;
+DROP POLICY IF EXISTS "Doctors can insert own profile" ON public.doctors;
+DROP POLICY IF EXISTS "Doctors can update own profile" ON public.doctors;
+DROP POLICY IF EXISTS "Doctors access own patients" ON public.patients;
+DROP POLICY IF EXISTS "Doctors access own appointments" ON public.appointments;
+DROP POLICY IF EXISTS "Doctors access own consultations" ON public.consultations;
+DROP POLICY IF EXISTS "Doctors access own vitals" ON public.vitals;
+DROP POLICY IF EXISTS "Doctors access own prescriptions" ON public.prescriptions;
+DROP POLICY IF EXISTS "Doctors access own patient medical history" ON public.medical_history;
+DROP POLICY IF EXISTS "Doctors access own lab reports" ON public.lab_reports;
+DROP POLICY IF EXISTS "Doctors access own documents" ON public.documents;
 
 -- 1. Doctors Policies
 CREATE POLICY "Doctors can view own profile" ON public.doctors
@@ -186,11 +200,13 @@ CREATE POLICY "Doctors access own appointments" ON public.appointments
 CREATE POLICY "Doctors access own consultations" ON public.consultations
   FOR ALL USING (doctor_id = public.get_doctor_id());
 
+
 -- 5. Vitals Policies
 CREATE POLICY "Doctors access own vitals" ON public.vitals
   FOR ALL USING (
     patient_id IN (SELECT id FROM public.patients WHERE doctor_id = public.get_doctor_id())
   );
+
 
 -- 6. Prescriptions Policies
 CREATE POLICY "Doctors access own prescriptions" ON public.prescriptions
@@ -210,19 +226,42 @@ CREATE POLICY "Doctors access own lab reports" ON public.lab_reports
 CREATE POLICY "Doctors access own documents" ON public.documents
   FOR ALL USING (doctor_id = public.get_doctor_id());
 
--- AUTOMATIC DOCTOR CREATION TRIGGER ON SIGNUP
+-- 10. RECEPTIONISTS TABLE
+CREATE TABLE IF NOT EXISTS public.receptionists (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  doctor_id UUID NOT NULL REFERENCES public.doctors(id) ON DELETE CASCADE,
+  auth_user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.receptionists ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Doctors manage own receptionists" ON public.receptionists;
+DROP POLICY IF EXISTS "Receptionists read own profile" ON public.receptionists;
+DROP POLICY IF EXISTS "Receptionists read patients" ON public.patients;
+DROP POLICY IF EXISTS "Receptionists manage appointments" ON public.appointments;
+DROP POLICY IF EXISTS "Receptionists read consultations" ON public.consultations;
+DROP POLICY IF EXISTS "Receptionists create consultations" ON public.consultations;
+DROP POLICY IF EXISTS "Receptionists manage patient vitals" ON public.vitals;
+
+-- AUTOMATIC DOCTOR CREATION TRIGGER ON DOCTOR SIGNUP
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.doctors (auth_user_id, name, email, specialization, qualification, clinic_name)
-  VALUES (
-    new.id,
-    COALESCE(new.raw_user_meta_data->>'name', 'Dr. Medical Officer'),
-    new.email,
-    COALESCE(new.raw_user_meta_data->>'specialization', 'General Physician'),
-    COALESCE(new.raw_user_meta_data->>'qualification', 'MBBS'),
-    COALESCE(new.raw_user_meta_data->>'clinic_name', 'MediEMR Care Clinic')
-  );
+  IF COALESCE(new.raw_user_meta_data->>'role', 'doctor') = 'doctor' THEN
+    INSERT INTO public.doctors (auth_user_id, name, email, specialization, qualification, clinic_name)
+    VALUES (
+      new.id,
+      COALESCE(new.raw_user_meta_data->>'name', 'Dr. Medical Officer'),
+      new.email,
+      COALESCE(new.raw_user_meta_data->>'specialization', 'General Physician'),
+      COALESCE(new.raw_user_meta_data->>'qualification', 'MBBS'),
+      COALESCE(new.raw_user_meta_data->>'clinic_name', 'MediEMR Care Clinic')
+    );
+  END IF;
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -239,3 +278,47 @@ VALUES ('lab-reports', 'lab-reports', false),
        ('documents', 'documents', false), 
        ('avatars', 'avatars', true)
 ON CONFLICT (id) DO NOTHING;
+
+-- Doctors can manage their own receptionists
+CREATE POLICY "Doctors manage own receptionists" ON public.receptionists
+  FOR ALL USING (doctor_id = public.get_doctor_id());
+
+-- Receptionists can read their own profile
+CREATE POLICY "Receptionists read own profile" ON public.receptionists
+  FOR SELECT USING (auth_user_id = auth.uid());
+
+-- Receptionists can read patients of their linked doctor
+CREATE POLICY "Receptionists read patients" ON public.patients
+  FOR SELECT USING (
+    doctor_id IN (
+      SELECT doctor_id FROM public.receptionists WHERE auth_user_id = auth.uid()
+    )
+  );
+
+-- Receptionists can manage appointments of their linked doctor
+CREATE POLICY "Receptionists manage appointments" ON public.appointments
+  FOR ALL USING (
+    doctor_id IN (
+      SELECT doctor_id FROM public.receptionists WHERE auth_user_id = auth.uid()
+    )
+  );
+
+-- Receptionists can create consultation containers and manage vitals only.
+CREATE POLICY "Receptionists read consultations" ON public.consultations
+  FOR SELECT USING (doctor_id IN (SELECT doctor_id FROM public.receptionists WHERE auth_user_id = auth.uid()));
+
+CREATE POLICY "Receptionists create consultations" ON public.consultations
+  FOR INSERT WITH CHECK (doctor_id IN (SELECT doctor_id FROM public.receptionists WHERE auth_user_id = auth.uid()));
+
+CREATE POLICY "Receptionists manage patient vitals" ON public.vitals
+  FOR ALL USING (patient_id IN (
+    SELECT p.id FROM public.patients p
+    JOIN public.receptionists r ON r.doctor_id = p.doctor_id
+    WHERE r.auth_user_id = auth.uid()
+  ))
+  WITH CHECK (patient_id IN (
+    SELECT p.id FROM public.patients p
+    JOIN public.receptionists r ON r.doctor_id = p.doctor_id
+    WHERE r.auth_user_id = auth.uid()
+  ));
+

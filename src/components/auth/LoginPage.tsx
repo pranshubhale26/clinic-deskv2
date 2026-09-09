@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Activity, Mail, Lock, ArrowRight, UserRound, Stethoscope } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 
@@ -11,17 +11,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
   const { login, resetPassword } = useAuth();
   const { showToast } = useToast();
 
-  const [email, setEmail] = useState('dr.sharma@mediemr.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
+  const [accountType, setAccountType] = useState<'doctor' | 'receptionist'>('doctor');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      showToast('Validation Error', 'Please enter your doctor email and password', 'error');
+      showToast('Validation Error', 'Please enter your email and password', 'error');
       return;
     }
 
@@ -58,7 +59,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Medi<span className="text-teal-400">EMR</span> Portal
           </h1>
-          <p className="text-xs text-slate-400">Doctor & Clinic Management Authentication</p>
+          <p className="text-xs text-slate-400">Doctor & Receptionist Sign-In</p>
+        </div>
+
+        {/* Receptionist hint */}
+        <div className="px-3 py-2.5 bg-slate-800/60 border border-slate-700/60 rounded-xl text-[11px] text-slate-400 text-center">
+          Receptionists — use the email & password provided by your doctor.
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 p-1 bg-slate-800 rounded-xl">
+          {(['doctor', 'receptionist'] as const).map((type) => (
+            <button key={type} type="button" onClick={() => setAccountType(type)} className={`flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-lg ${accountType === type ? 'bg-teal-500 text-white' : 'text-slate-400'}`}>
+              {type === 'doctor' ? <Stethoscope className="w-3.5 h-3.5" /> : <UserRound className="w-3.5 h-3.5" />}
+              {type === 'doctor' ? 'Doctor' : 'Receptionist'}
+            </button>
+          ))}
         </div>
 
         {/* Login Form */}
@@ -117,7 +132,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
             disabled={loading}
             className="w-full py-3 bg-teal-500 hover:bg-teal-400 text-white font-bold text-xs rounded-xl shadow-lg shadow-teal-500/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
-            <span>{loading ? 'Authenticating...' : 'Sign In to Workspace'}</span>
+            <span>{loading ? 'Authenticating...' : `Sign In as ${accountType === 'doctor' ? 'Doctor' : 'Receptionist'}`}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
@@ -139,7 +154,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-black/60" onClick={() => setShowForgotModal(false)}></div>
           <div className="relative w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl z-10 text-white space-y-4">
-            <h3 className="font-bold text-sm">Reset Doctor Password</h3>
+            <h3 className="font-bold text-sm">Reset Password</h3>
             <form onSubmit={handleForgotSubmit} className="space-y-3">
               <input
                 type="email"
