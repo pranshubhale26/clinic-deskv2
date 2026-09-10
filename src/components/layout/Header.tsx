@@ -8,10 +8,17 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { navItems } from './Sidebar';
 
+export type ViewMode = 'auto' | 'desktop' | 'mobile';
+
 interface HeaderProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onOpenQuickPatientSearch?: () => void;
+
+  // Kept for compatibility with the rest of the application.
+  // The View Mode switcher itself has been removed.
+  viewMode?: ViewMode;
+  setViewMode?: (mode: ViewMode) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -36,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 lg:px-8 py-3.5 flex items-center justify-between gap-4">
+
       {/* Page Title & Mobile Brand Indicator */}
       <div className="flex items-center gap-3">
         <div className="flex md:hidden items-center gap-2">
@@ -57,6 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Global Quick Patient Search & Right Controls */}
       <div className="flex items-center gap-2 sm:gap-3">
+
         {/* Quick Search Button - Desktop */}
         <button
           onClick={onOpenQuickPatientSearch}
@@ -104,6 +113,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden md:block" />
         </button>
+
       </div>
     </header>
   );
